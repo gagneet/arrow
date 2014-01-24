@@ -17,19 +17,15 @@ var nopt = require("nopt");
 var http = require("http");
 var express = require("express");
 var log4js = require("log4js");
-var childProcess = require("child_process");
 var portchecker = require('../ext-lib/portchecker');
 
-log4js.setGlobalLogLevel("INFO");
+log4js.setGlobalLogLevel("ERROR");
 var logger = log4js.getLogger("ArrowServer");
 
 var debug = false;
 var arrowHost = "localhost";
 var arrowPortMin = 10000;
 var arrowPortMax = 11000;
-var ghostPortMin = 10000;
-var ghostPortMax = 11000;
-var ghostPort = 0;
 var arrowPort = 0;
 var arrowAddress = "";
 var parsed = nopt();
@@ -37,21 +33,18 @@ var parsed = nopt();
 //setting appRoot
 global.appRoot = path.resolve(__dirname, "..");
 
-
-
 //help messages
 function showHelp() {
     console.info("\nOPTIONS :" + "\n" +
         "        --host : (optional) Fully qualified name of host where arrow server is running. (default: localhost)" + "\n" +
-        "        --port : (optional) Arrow Server Port. (default: 4459) " + "\n" +
-        "        --ghostPort : (optional) GhostDriver Port. (default: 4460) " + "\n\n"
+        "        --port : (optional) Arrow Server Port. (default: 4459) " + "\n\n"
     );
 
     console.log("\nEXAMPLES :" + "\n" +
         "        For local usage: " + "\n" +
         "          arrow_server ( Arrow server will start listening to localhost:4459 )" + "\n\n" +
         "        For remote usage: " + "\n" +
-        "          arrow_server --host=minuteblue.corp.yahoo.com --port=4800 ( Arrow server will start listening to minuteblue.corp.yahoo.com:4800) " + "\n\n");
+        "          arrow_server --host=<yourhostname> --port=4800 ( Arrow server will start listening to <yourhostname>:4800) " + "\n\n");
 }
 
 if (parsed.help) {
@@ -61,6 +54,10 @@ if (parsed.help) {
 
 if (parsed["host"]) {
     arrowHost = parsed["host"];
+}
+if (!arrowHost || arrowHost === "localhost") {
+    var servermanager=require("./arrowservermanager");
+    arrowHost = servermanager.getLocalhostIPAddress() || "localhost" ;
 }
 
 if (parsed["port"]) {
@@ -79,20 +76,20 @@ if (parsed["debug"]) {
 }
 
 var app = express();
-app.use(express.logger());
+app.use(log4js.connectLogger(logger));
 app.use(express.cookieParser());
 app.use(express.bodyParser());
 
 var mimes = {
-    "css":  "text/css",
-    "js":   "text/javascript",
-    "htm":  "text/html",
-    "html": "text/html",
-    "ico":  "image/vnd.microsoft.icon",
-    "jpg":  "image/jpeg",
-    "gif":  "image/gif",
-    "png":  "image/png",
-    "xml":  "text/xml"
+    "css":"text/css",
+    "js":"text/javascript",
+    "htm":"text/html",
+    "html":"text/html",
+    "ico":"image/vnd.microsoft.icon",
+    "jpg":"image/jpeg",
+    "gif":"image/gif",
+    "png":"image/png",
+    "xml":"text/xml"
 };
 
 function serveStatic(pathname, req, res) {
@@ -109,23 +106,19 @@ function serveStatic(pathname, req, res) {
             ext = pathname.substring((tmp + 1));
             mime = mimes[ext] || "text/plain";
 
-            res.writeHead(200, {"Content-Type": mime});
+            res.writeHead(200, {"Content-Type":mime});
             res.end(content);
         }
     });
 }
 
 
-
 function cleanUp() {
     try {
         fs.unlinkSync(global.appRoot + "/tmp/arrow_server.status");
-        fs.unlinkSync(global.appRoot + "/tmp/arrow_phantom_server.status");
-    } catch (ex) {}
-
-    if ( this.child.kill) {
-        this.child.kill();
+    } catch (ex) {
     }
+
     console.log("Good bye!");
 }
 
@@ -133,13 +126,28 @@ function cleanUp() {
 app.get("/arrow", function (req, res) {
     serveStatic(__dirname + "/../lib/client/driver.html", req, res);
 });
+
+// for yui loader check
+app.all('/yuiLoader', function(req, res){
+
+    res.writeHead(200, {"Content-Type":"text/plain",
+        'Access-Control-Allow-Origin':'*',
+        'Access-Control-Max-Age':'600',
+        'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept',
+        'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+        'Access-Control-Expose-Headers': 'Content-Length',
+        'Access-Control-Allow-Credentials': 'true'
+    });
+    res.end("yuiLoaderOK");
+});
+
 app.get("/arrow/static/*", function (req, res) {
     serveStatic("/" + req.params[0], req, res);
 });
 
 // selenium ip hookup
 app.get("/arrow/wd/:selPort", function (req, res) {
-    var selUrl = "http://" +  req.connection.remoteAddress + ":" + req.params.selPort + "/wd/hub";
+    var selUrl = "http://" + req.connection.remoteAddress + ":" + req.params.selPort + "/wd/hub";
     fs.writeFileSync("/tmp/arrow_sel_server.status", selUrl);
     res.end("Selenium captured at: " + selUrl, "utf-8");
 });
@@ -153,11 +161,13 @@ function validateSession(req, res) {
     var sessionId = req.params.sessionId,
         body;
 
-    if (sessions.hasOwnProperty(sessionId)) { return true; }
+    if (sessions.hasOwnProperty(sessionId)) {
+        return true;
+    }
 
     body = {
-        status: 9,
-        value: "No such sessionId: " + sessionId
+        status:9,
+        value:"No such sessionId: " + sessionId
     };
     res.send(body, 404);
     return false;
@@ -175,8 +185,8 @@ function queueWdTask(params, req, res) {
         curTask = wdtasks[sessionId];
         if (curTask) {
             body = {
-                status: 9,
-                value: "A command is still running for sessionId: " + sessionId
+                status:9,
+                value:"A command is still running for sessionId: " + sessionId
             };
             res.send(body, 500);
             return false;
@@ -184,15 +194,15 @@ function queueWdTask(params, req, res) {
     }
 
     task = {
-        "id": "taskid-" + wdTaskCounter,
-        "params": params,
-        "statusCode": 0,
-        "httpCode": 200
+        "id":"taskid-" + wdTaskCounter,
+        "params":params,
+        "statusCode":0,
+        "httpCode":200
     };
     wdtasks[sessionId] = {
-        "request": req,
-        "response": res,
-        "task": task
+        "request":req,
+        "response":res,
+        "task":task
     };
     wdTaskCounter += 1;
 
@@ -236,9 +246,9 @@ app.post("/arrow/slave/:sessionId", function (req, res) {
         delete wdtasks[sessionId];
 
         resBody = {
-            "status": prevTask.statusCode,
-            "sessionId": sessionId,
-            "value": prevTask.result
+            "status":prevTask.statusCode,
+            "sessionId":sessionId,
+            "value":prevTask.result
         };
         if (debug) {
             console.log("Task result:");
@@ -248,7 +258,9 @@ app.post("/arrow/slave/:sessionId", function (req, res) {
     }
 
     if (sessions.hasOwnProperty(sessionId)) {
-        if (debug) { console.log("Killing old connection for session: " + sessionId); }
+        if (debug) {
+            console.log("Killing old connection for session: " + sessionId);
+        }
         oldSession = sessions[sessionId];
         oldSession.response.end();
         delete sessions[sessionId];
@@ -256,10 +268,10 @@ app.post("/arrow/slave/:sessionId", function (req, res) {
 
     console.log("Session registered: " + sessionId);
     sessions[sessionId] = {
-        "sessionId": sessionId,
-        "timestamp": timestamp,
-        "request": req,
-        "response": res
+        "sessionId":sessionId,
+        "timestamp":timestamp,
+        "request":req,
+        "response":res
     };
 
     conn = req.connection;
@@ -267,10 +279,14 @@ app.post("/arrow/slave/:sessionId", function (req, res) {
         if (sessions.hasOwnProperty(sessionId)) {
             oldSession = sessions[sessionId];
             if (oldSession.timestamp === timestamp) {
-                if (debug) { console.log("Session deleted: " + sessionId); }
+                if (debug) {
+                    console.log("Session deleted: " + sessionId);
+                }
                 delete sessions[sessionId];
             } else {
-                if (debug) { console.log("Session already recaptured: " + sessionId); }
+                if (debug) {
+                    console.log("Session already recaptured: " + sessionId);
+                }
             }
         }
     });
@@ -283,8 +299,8 @@ app.get("/wd/hub/status", function (req, res) {
 
     res.contentType("application/json");
     body = {
-        build: { version: "1.0" },
-        os: { name: "rhel" }
+        build:{ version:"1.0" },
+        os:{ name:"rhel" }
     };
     res.send(body);
 });
@@ -292,7 +308,7 @@ app.get("/wd/hub/status", function (req, res) {
 // Create a new session
 app.post("/wd/hub/session", function (req, res) {
     res.contentType("application/json");
-    res.send({status: 9, value: "Create session: Not Implemented"}, 501);
+    res.send({status:9, value:"Create session: Not Implemented"}, 501);
 });
 
 // Get all sessions
@@ -305,12 +321,12 @@ app.get("/wd/hub/sessions", function (req, res) {
 
     sessionIds = [];
     for (sessionId in sessions) {
-        sessionIds.push({"id": sessionId});
+        sessionIds.push({"id":sessionId});
     }
 
     body = {
-        status: 0,
-        value: sessionIds
+        status:0,
+        value:sessionIds
     };
     res.send(body);
 });
@@ -321,20 +337,22 @@ app.get("/wd/hub/session/:sessionId", function (req, res) {
         session;
 
     res.contentType("application/json");
-    if (!validateSession(req, res)) { return; }
+    if (!validateSession(req, res)) {
+        return;
+    }
 
     session = sessions[req.params.sessionId];
     body = {
-        status: 0,
-        sessionId: req.params.sessionId,
-        value: {
-            platform: "ANY",
-            cssSelectorsEnabled: true,
-            javascriptEnabled: true,
-            browserName: session.request.headers["user-agent"],
-            nativeEvents: true,
-            takesScreenshot: false,
-            version: 1
+        status:0,
+        sessionId:req.params.sessionId,
+        value:{
+            platform:"ANY",
+            cssSelectorsEnabled:true,
+            javascriptEnabled:true,
+            browserName:session.request.headers["user-agent"],
+            nativeEvents:true,
+            takesScreenshot:false,
+            version:1
         }
     };
 
@@ -344,23 +362,27 @@ app.get("/wd/hub/session/:sessionId", function (req, res) {
 // Delete the session
 app.del("/wd/hub/session/:sessionId", function (req, res) {
     res.contentType("application/json");
-    res.send({status: 9, value: "Delete session: Not Implemented"}, 501);
+    res.send({status:9, value:"Delete session: Not Implemented"}, 501);
 });
 
 // Get the current page title
 app.get("/wd/hub/session/:sessionId/title", function (req, res) {
     res.contentType("application/json");
-    if (!validateSession(req, res)) { return; }
+    if (!validateSession(req, res)) {
+        return;
+    }
 
-    queueWdTask({"type": "title"}, req, res);
+    queueWdTask({"type":"title"}, req, res);
 });
 
 // Get the current page url
 app.get("/wd/hub/session/:sessionId/url", function (req, res) {
     res.contentType("application/json");
-    if (!validateSession(req, res)) { return; }
+    if (!validateSession(req, res)) {
+        return;
+    }
 
-    queueWdTask({"type": "url"}, req, res);
+    queueWdTask({"type":"url"}, req, res);
 });
 
 var revProxyHost = "";
@@ -373,15 +395,21 @@ app.post("/wd/hub/session/:sessionId/url", function (req, res) {
         reqPort;
 
     res.contentType("application/json");
-    if (!validateSession(req, res)) { return; }
+    if (!validateSession(req, res)) {
+        return;
+    }
     url = req.body.url;
 
     reqParams = urlParser.parse(url);
     reqHost = reqParams.hostname;
     reqPort = 80;
-    if (reqParams.port) { reqPort = reqParams.port; }
+    if (reqParams.port) {
+        reqPort = reqParams.port;
+    }
     if ((reqHost === arrowHost) && (reqPort === arrowPort)) {
-        if (debug) { console.log("Reverse proxy disabled"); }
+        if (debug) {
+            console.log("Reverse proxy disabled");
+        }
         revProxyHost = "";
     } else {
         console.log("Reverse proxy enabled for: " + reqHost + ":" + reqPort);
@@ -390,7 +418,7 @@ app.post("/wd/hub/session/:sessionId/url", function (req, res) {
         url = arrowAddress + reqParams.pathname;
     }
 
-    queueWdTask({"type": "navigate", "url": url}, req, res);
+    queueWdTask({"type":"navigate", "url":url}, req, res);
 });
 
 // Execute sync script
@@ -398,96 +426,118 @@ app.post("/wd/hub/session/:sessionId/execute", function (req, res) {
     var script;
 
     res.contentType("application/json");
-    if (!validateSession(req, res)) { return; }
+    if (!validateSession(req, res)) {
+        return;
+    }
 
     script = req.body.script;
-    queueWdTask({"type": "execute", "script": script}, req, res);
+    queueWdTask({"type":"execute", "script":script}, req, res);
 });
 
 // Execute async script
 app.post("/wd/hub/session/:sessionId/execute_async", function (req, res) {
     res.contentType("application/json");
-    res.send({status: 9, value: "execute_async: Not Implemented"}, 501);
+    res.send({status:9, value:"execute_async: Not Implemented"}, 501);
 });
 
 // find an element
 app.post("/wd/hub/session/:sessionId/element", function (req, res) {
     res.contentType("application/json");
-    if (!validateSession(req, res)) { return; }
+    if (!validateSession(req, res)) {
+        return;
+    }
 
-    queueWdTask({"type": "element", "using": req.body.using, "value": req.body.value}, req, res);
+    queueWdTask({"type":"element", "using":req.body.using, "value":req.body.value}, req, res);
 });
 
 // find an element starting from
 app.post("/wd/hub/session/:sessionId/element/:id/element", function (req, res) {
     res.contentType("application/json");
-    if (!validateSession(req, res)) { return; }
+    if (!validateSession(req, res)) {
+        return;
+    }
 
-    queueWdTask({"type": "element", "element": req.params.id, "using": req.body.using, "value": req.body.value}, req, res);
+    queueWdTask({"type":"element", "element":req.params.id, "using":req.body.using, "value":req.body.value}, req, res);
 });
 
 // find elements
 app.post("/wd/hub/session/:sessionId/elements", function (req, res) {
     res.contentType("application/json");
-    if (!validateSession(req, res)) { return; }
+    if (!validateSession(req, res)) {
+        return;
+    }
 
-    queueWdTask({"type": "elements", "using": req.body.using, "value": req.body.value}, req, res);
+    queueWdTask({"type":"elements", "using":req.body.using, "value":req.body.value}, req, res);
 });
 
 // find elements starting from
 app.post("/wd/hub/session/:sessionId/elements/:id/element", function (req, res) {
     res.contentType("application/json");
-    if (!validateSession(req, res)) { return; }
+    if (!validateSession(req, res)) {
+        return;
+    }
 
-    queueWdTask({"type": "elements", "element": req.params.id, "using": req.body.using, "value": req.body.value}, req, res);
+    queueWdTask({"type":"elements", "element":req.params.id, "using":req.body.using, "value":req.body.value}, req, res);
 });
 
 // get text of an element
 app.get("/wd/hub/session/:sessionId/element/:id/text", function (req, res) {
     res.contentType("application/json");
-    if (!validateSession(req, res)) { return; }
+    if (!validateSession(req, res)) {
+        return;
+    }
 
-    queueWdTask({"type": "text", "element": req.params.id}, req, res);
+    queueWdTask({"type":"text", "element":req.params.id}, req, res);
 });
 
 // get tag of an element
 app.get("/wd/hub/session/:sessionId/element/:id/name", function (req, res) {
     res.contentType("application/json");
-    if (!validateSession(req, res)) { return; }
+    if (!validateSession(req, res)) {
+        return;
+    }
 
-    queueWdTask({"type": "name", "element": req.params.id}, req, res);
+    queueWdTask({"type":"name", "element":req.params.id}, req, res);
 });
 
 // get attribute of an element
 app.get("/wd/hub/session/:sessionId/element/:id/attribute/:name", function (req, res) {
     res.contentType("application/json");
-    if (!validateSession(req, res)) { return; }
+    if (!validateSession(req, res)) {
+        return;
+    }
 
-    queueWdTask({"type": "attribute", "element": req.params.id, "name": req.params.name}, req, res);
+    queueWdTask({"type":"attribute", "element":req.params.id, "name":req.params.name}, req, res);
 });
 
 // click on an element
 app.post("/wd/hub/session/:sessionId/element/:id/click", function (req, res) {
     res.contentType("application/json");
-    if (!validateSession(req, res)) { return; }
+    if (!validateSession(req, res)) {
+        return;
+    }
 
-    queueWdTask({"type": "click", "element": req.params.id}, req, res);
+    queueWdTask({"type":"click", "element":req.params.id}, req, res);
 });
 
 // submit a form
 app.post("/wd/hub/session/:sessionId/element/:id/submit", function (req, res) {
     res.contentType("application/json");
-    if (!validateSession(req, res)) { return; }
+    if (!validateSession(req, res)) {
+        return;
+    }
 
-    queueWdTask({"type": "submit", "element": req.params.id}, req, res);
+    queueWdTask({"type":"submit", "element":req.params.id}, req, res);
 });
 
 // send key strokes to an element
 app.post("/wd/hub/session/:sessionId/element/:id/value", function (req, res) {
     res.contentType("application/json");
-    if (!validateSession(req, res)) { return; }
+    if (!validateSession(req, res)) {
+        return;
+    }
 
-    queueWdTask({"type": "value", "element": req.params.id, "value": req.body.value}, req, res);
+    queueWdTask({"type":"value", "element":req.params.id, "value":req.body.value}, req, res);
 });
 
 function serveRevProxy(req, res) {
@@ -501,11 +551,11 @@ function serveRevProxy(req, res) {
     req.headers["X-Forwarded-For"] = req.connection.remoteAddress;
     req.headers["Host"] = revProxyHost;
     options = {
-        host: revProxyHost,
-        port: revProxyPort,
-        path: req.url,
-        method: req.method,
-        headers: req.headers
+        host:revProxyHost,
+        port:revProxyPort,
+        path:req.url,
+        method:req.method,
+        headers:req.headers
     };
     proxy_request = http.request(options, function (proxy_response) {
         //send headers and data as received
@@ -540,41 +590,12 @@ app.get("*", function (req, res) {
         serveRevProxy(req, res);
     } else {
         docRoot = process.cwd();
-        if ("/" === docRoot) { docRoot = ""; }
+        if ("/" === docRoot) {
+            docRoot = "";
+        }
         serveStatic(docRoot + req.url, req, res);
     }
 });
-
-//starting ghostdriver
-
-function startGhostDriver() {
-
-    if (parsed["ghostPort"]) {
-        ghostPort = String(parsed["ghostPort"]);
-    }
-
-    if (ghostPort > 0 ) {
-        ghostPortMin = ghostPortMax = ghostPort;
-    }
-
-    var self = this;
-    portchecker.getFirstAvailable(arrowPort, ghostPortMax, "localhost", function(p, host) {
-        if (p === -1) {
-            console.log('No free ports found for GhostDriver on ' + host + ' between ' + arrowPort + ' and ' + ghostPortMax);
-        } else {
-            // console.log('the first free port found for Gost Driver on ' + host + ' between ' + arrowPort + ' and ' + ghostPortMax + ' is ' + p);
-            ghostPort = p;
-            self.child = childProcess.spawn("node", [__dirname + "/ghostdriverlauncher.js", p, arrowHost]);
-            self.child.stdout.on("data", function (data) {
-                console.log(data.toString());
-            });
-            self.child.stderr.on("data", function (data) {
-                console.error(data.toString());
-            });
-
-        }
-    });
-}
 
 function runArrowServer(port) {
 
@@ -583,15 +604,14 @@ function runArrowServer(port) {
     arrowAddress = "http://" + arrowHost + ":" + port;
     console.log("Server running at: " + arrowAddress);
     fs.writeFileSync(global.appRoot + "/tmp/arrow_server.status", arrowAddress);
-    startGhostDriver();
 }
 
 //starting arrow server
-portchecker.getFirstAvailable(arrowPortMin, arrowPortMax, "localhost", function(p, host) {
+portchecker.getFirstAvailable(arrowPortMin, arrowPortMax, "localhost", function (p, host) {
     if (p === -1) {
         console.log('No free ports found for arrow server on ' + host + ' between ' + arrowPortMin + ' and ' + arrowPortMax);
     } else {
-       // console.log('The first free port found for arrow server on ' + host + ' between ' + arrowPortMin + ' and ' + arrowPortMax + ' is ' + p);
+        // console.log('The first free port found for arrow server on ' + host + ' between ' + arrowPortMin + ' and ' + arrowPortMax + ' is ' + p);
         arrowPort = p;
         runArrowServer(p);
     }
@@ -602,9 +622,9 @@ process.on("uncaughtException", function (err) {
     process.exit();
 });
 process.on("SIGINT", function () {
+    console.log("sigINT caught");
     process.exit();
 });
 process.on("exit", function (err) {
     cleanUp();
 });
-

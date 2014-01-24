@@ -7,21 +7,15 @@ Prerequisites
 ==================
 You must have:
 
-
-TODO... needs to be updated
-
-* `Installed `_ the Arrow framework.
-* `Downloaded `_ Arrow Tutorial from GitHub
+* `Installed <./arrow_getting_started.rst>`_ the Arrow framework.
+* `Downloaded <https://github.com/yahoo/arrow/tree/master/docs/arrow_tutorial>`_ Arrow Tutorial from GitHub
 
 .. _Unit:
 
 Unit Tests
 ===========
 
-The Demo includes a *unit_test* folder and includes two files:
-
-TODO... needs to be updated
-
+The demo includes a *unit_test* folder and includes two files:
 
 +---------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------------------------------------------------------+
 | `unit_test/src/greeter.js `_       | Simple YUI module that takes two parameters as input, inverses their order, and returns them as output |
@@ -36,7 +30,7 @@ Executing the Unit Test
 
 To execute the unit test example do the following:
 
-1. Start arrow_server (leave that prompt open): ``arrow_server``
+1. Start arrow_server (leave that prompt open): ``arrow_server``  [ Note: This is required only when running the test against PhantomJS or a Selenium-supported browser) ]
 
 2. On a separate command prompt navigate to: ``~/arrow_tutorial/unit_test/test``
 
@@ -44,9 +38,9 @@ To execute the unit test example do the following:
 
 ::
 
- arrow test-unit.js --lib=../src/greeter.js
+ arrow test-unit.js --lib=../src/greeter.js  or ./node_modules/.bin/arrow test-unit.js --lib=../src/greeter.js
 
-*where*: ``--lib=`` Specifies the location of the source code to test.
+*where*: ``--lib=`` specifies the location of the source code to test.
 
 
 To run against PhantomJS or a Selenium-supported browser, enter:
@@ -54,13 +48,16 @@ To run against PhantomJS or a Selenium-supported browser, enter:
 ::
 
   arrow test-unit.js --lib=../src/greeter.js --driver=selenium --browser=phantomjs
+  or
+  ./node_modules/.bin/arrow test-unit.js --lib=../src/greeter.js --driver=selenium --browser=phantomjs
 
   arrow test-unit.js --lib=../src/greeter.js --driver=selenium --browser=firefox
+  or
+  ./node_modules/.bin/arrow test-unit.js --lib=../src/greeter.js --driver=selenium --browser=firefox
+.. TODO... needs to be updated
 
-TODO... needs to be updated
 
-
-**Note:** `Arrow Server <./arrow_getting_started.html>`_ and `Selenium <./arrow_getting_started.html#start-selenium>`_ need to be running
+**Note:** `Arrow Server <./arrow_getting_started.rst#confirm-you-can-run-the-arrow-server>`_ and `Selenium <./arrow_getting_started.rst#start-selenium>`_ need to be running
 
 When you execute using PhantomJS, a screenshot is captured automatically. The screenshot is stored in the location where you executed the test (in this case, ``unit_test/test/``).
 
@@ -72,11 +69,11 @@ Functional Tests
 src
 ---
 
-Functional testing is a broad definition for anything that is *not* a unit test. This *may* include tests such as JS UI functional tests, and integration tests.
+Functional testing is a broad definition for anything that is *not* a unit test. This *may* include tests such as JS UI functional tests and integration tests.
 
-As in the *unit_test* demo, under *arrow_tutorial* there is a folder called *func_tests* For the purposes of this demo, we will be working with YUI "multi-tab" module. Furthermore, during this stage of testing, functional, we'll use a *mock* page to mock our ultimate application.
+As in the *unit_test* demo, under *arrow_tutorial* there is a folder called *func_tests*. For the purposes of this demo, we will be working with YUI "multi-tab" module. Furthermore, during this stage of testing, functional, we'll use a *mock* page to mock our ultimate application.
 
-TODO... needs to be updated
+.. TODO... needs to be updated
 
 
 +------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
@@ -85,18 +82,18 @@ TODO... needs to be updated
 | `func_tests/test/testMock.html `_ | This is a very simple HTML which acts as our *mock* page container. It has the basic skeleton of the final output and references the JS code the final output will also use |
 +------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
-Our mock page looks like this:
-
-.. image:: starting.png
-
-The final output of the application **will** look like this:
-
-.. image:: final.png
+..  Our mock page looks like this:
+..
+..   image commented out - @dmitris image  starting.png
+..
+.. The final output of the application **will** look like this:
+..
+..  image commented out - @dmitris image final.png
 
 test
 ----
 
-TODO... needs to be updated
+.. TODO... needs to be updated
 
 
 There are are number of test files in our *test* folder
@@ -125,7 +122,7 @@ To execute the func tests do the following:
 
 2. On a separate command prompt navigate to. ``~/arrow_tutorial/func_test/test``
 
-3. Because these tests require a web page, Arrow defaults the driver to FireFox (**Note** `Selenium Server <./arrow_getting_started.html#start-selenium>`_ must be running), type:
+3. Because these tests require a web page, Arrow defaults the driver to FireFox (**Note** `Selenium Server <./arrow_getting_started.rst#start-selenium>`_ must be running), type:
 
 ::
 
@@ -154,7 +151,7 @@ In Arrow, the difference between a JavaScript UI functional test and a JavaScrip
 
 In other words, if your JavaScript UI *functional_* test is constructed smartly, you could use it for *integration* testing as well.
 
-TODO... needs to be updated
+.. TODO... needs to be updated
 
 Consider the `test-int.js `_ file. It confirms the tabs have specific values. For this simple app, those values *would* come from a WS or some type of integration with another system.
 
@@ -163,7 +160,7 @@ Executing the Integration Test
 
 For this example, we'll suppose our AUT is hosted elsewhere (perhaps in an integration, testing, or staging environment); http://www.doctor46.com/tabview.html
 
-Execution of the tests follows a familar theme:
+Execution of the tests follows a familiar theme:
 
 1. Because the AUT is hosted elsewhere, we don't need arrow_server, simply navigate to: ``~/arrow_tutorial/func_test/test``
 
@@ -172,6 +169,8 @@ Execution of the tests follows a familar theme:
 ::
 
   arrow test-int.js  --page=http://www.doctor46.com/tabview.html --lib=test-lib.js
+  or
+  ./node_modules/.bin/arrow test-int.js  --page=http://www.doctor46.com/tabview.html --lib=test-lib.js
 
 **Note** the --page parameter is now pointing to an HTTP End-Point rather than our mock page
 
@@ -180,14 +179,18 @@ Execution of the tests follows a familar theme:
 ::
 
   arrow test-int.js  --page=http://www.doctor46.com/tabview.html --lib=test-lib.js --browser=phantomjs
+  or
+  ./node_modules/.bin/arrow test-int.js  --page=http://www.doctor46.com/tabview.html --lib=test-lib.js --browser=phantomjs
 
-Similarly, you can run func tests (test-func.js) against the HTTP End-Point like this:
+Similarly, you can run functional tests (test-func.js) against the HTTP endpoint like this:
 
 ::
 
   arrow test-func.js  --page=http://www.doctor46.com/tabview.html --lib=test-lib.js
+  or
+  ./node_modules/.bin/arrow test-func.js  --page=http://www.doctor46.com/tabview.html --lib=test-lib.js
 
 Conclusion
 ==========
 
-As you can see, Arrow allows you to execute all types of tests (unit, functional and integration) using the same methodology. Unlike other frameworks, it does not dictate to you how to execute different tests, as far as Arrow is concerned, tests are just tests.
+As you can see, Arrow allows you to execute all types of tests (unit, functional and integration) using the same methodology. Unlike other frameworks, it does not dictate to you how to execute different tests. As far as Arrow is concerned, tests are just tests.

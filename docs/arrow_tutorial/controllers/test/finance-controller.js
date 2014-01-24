@@ -8,8 +8,8 @@
 
 
 var util = require("util");
-var log4js = require("arrow").log4js;
-var Controller = require("arrow").controller;
+var log4js = require("yahoo-arrow").log4js;
+var Controller = require("yahoo-arrow").controller;
 
 function FinanceCustomController(testConfig,args,driver) {
     Controller.call(this, testConfig,args,driver);
@@ -52,12 +52,11 @@ FinanceCustomController.prototype.execute = function(callback) {
             //Navigate the page as necessary
             webdriver.findElement(webdriver.By.css(txtLocator)).sendKeys(typeText);
             webdriver.findElement(webdriver.By.css(btnLocator)).click();
-            self.testParams.page=null;
             webdriver.getTitle().then(function(title) {
 
                 //Execute the test
                 self.driver.executeTest(self.testConfig, self.testParams, function(error, report) {
-                    callback();
+                    callback(error);
                 });
             });
         });

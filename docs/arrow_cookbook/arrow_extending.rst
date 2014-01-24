@@ -5,9 +5,9 @@ Extending and Developing Arrow
 Extending Controllers
 ---------------------
 
-Controllers are a very important part of Arrow. As described in the `architecture, <./arrow_intro.html#arrow-internals>`_ *controllers* are a way to *control* when and where your test will execute. By default, **Arrow** assumes you want to execute your test against the *page* or *HTTP End-Point* given in the **--page=** parameter.
+Controllers are a very important part of Arrow. As described in the `architecture, <./arrow_intro.rst#arrow-internals>`_ *controllers* are a way to *control* when and where your test will execute. By default, **Arrow** assumes you want to execute your test against the *page* or *HTTP endpoint* given in the **--page=** parameter.
 
-Additionally, Arrow provides the concept of `complex scenarios, <./arrow_in-depth.html#complex-test-scenarios>`_ you can create a *scenario* using a combination of the *default* and the `locator controller. <./arrow_in-depth.html#the-locator-controller>`_
+Additionally, Arrow provides the concept of `complex scenarios, <./arrow_in-depth.rst#complex-test-scenarios>`_ you can create a *scenario* using a combination of the *default* and the `locator controller. <./arrow_in-depth.rst#the-locator-controller>`_
 
 However, there may still be the case where Arrow's built-in controllers are not sufficient for your needs. In this case, a user can create their own **custom controllers** to satisfy their needs.
 
@@ -20,7 +20,7 @@ All controllers, including *default* and *locator* extend from the same **contro
 How To Create A Custom Controller
 =================================
 
-Let's take the example we described in the `complex scenarios <./arrow_in-depth.html#complex-test-scenarios>`_ section. In that case we wanted to go to finance.yahoo.com, enter a ticker value and make sure we got to the correct page. We can convert those steps to into a *custom controller*
+Let's take the example we described in the `complex scenarios <./arrow_in-depth.rst#complex-test-scenarios>`_ section. In that case we wanted to go to finance.yahoo.com, enter a ticker value and make sure we got to the correct page. We can convert those steps to into a *custom controller*
 
 First you need to make sure you can *create* a custom controller by executing this command:
 
@@ -33,8 +33,8 @@ Now you can begin. Here is a sample implementation of what such a *custom contro
 ::
 
   var util = require("util");
-  var log4js = require("arrow").log4js;
-  var Controller = require("arrow").controller;
+  var log4js = require("yahoo-arrow").log4js;
+  var Controller = require("yahoo-arrow").controller;
 
   function FinanceCustomController(testConfig,args,driver) {
       Controller.call(this, testConfig,args,driver);
@@ -77,7 +77,6 @@ Now you can begin. Here is a sample implementation of what such a *custom contro
               //Navigate the page as necessary
               webdriver.findElement(webdriver.By.css(txtLocator)).sendKeys(typeText);
               webdriver.findElement(webdriver.By.css(btnLocator)).click();
-              self.testParams.page=null;
               webdriver.getTitle().then(function(title) {
 
                   //Execute the test
@@ -136,6 +135,13 @@ Now let's take a look at what the *Test Descriptor* would look like.
 
 The *Test Descriptor* includes all of the information the controller will need; all under the **params** node
 
+**Note**: if the controller directory is scanned by ``--shareLibPath``, you can use package_name.controller_name in **controller** node, as below:
+
+::
+
+  "controller": "FinanceCustomController.finance-controller"
+
+
 How To Execute
 ..............
 
@@ -160,20 +166,20 @@ Once you have become familiar with Arrow, you'll probably want to make small cha
 To force NodeJS to look at your local instance of Arrow do the following:
 
 1. Navigate to the location where Arrow's source code resides
-2. Look for a file called package.json, it will be under: path_to_arrow_source/arrow/node/package.json)
-3. From within the *node* folder (*arrow/node*), link your local instance of arrow to node by typing:
+2. Look for a file called package.json, it will be under: path_to_arrow_source/arrow/package.json)
+3. From within the *arrow* folder, link your local instance of arrow to node by typing:
 
 ::
 
   sudo npm link
 
-You can confirm if the *link* was successful by checking its version
+You can confirm if the *link* was successful by changing Arrow version in package.json ( under arrow/) to 0.0.0
 
 ::
 
-    arrow --version
+    "version": "0.0.0",
 
-You should get:
+ Doing arrow --version, you should get:
 
 ::
 
@@ -182,22 +188,22 @@ You should get:
 How To Submit a Patch
 =====================
 
-Internal Patch Submission Process
-.................................
+Submit a pull request to https://github.com/yahoo/arrow when you want to submit your code. Your changes will merge with the master branch after review.
 
-TODO... needs to be updated
+
+.. TODO... needs to be updated
 
 Code Review Process
 ...................
 
-TODO... needs to be updated
+.. TODO... needs to be updated
 
 **DO NOT COMMIT your code without following the patch submission process**
 
 How to Run Unit/Functional Tests?
 .................................
 
-TODO... needs to be updated
+.. TODO... needs to be updated
 
 Get the `unit tests _
 
@@ -213,11 +219,11 @@ Run the following command and make sure it passes
 
 **WIP**
 
-TODO... needs to be updated
+.. TODO... needs to be updated
 
 
 Get the `functional tests 
-Navigate to the functional tests /arrow_funtional-tests/node
+Navigate to the functional tests /arrow_tutorial/func_test/test
 
 Run following command and make sure it passes
 
